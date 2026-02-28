@@ -392,12 +392,13 @@ class FullNodeAPI:
 
     @metadata.request(reply_types=[ProtocolMessageTypes.respond_blocks, ProtocolMessageTypes.reject_blocks])
     async def request_blocks(self, request: full_node_protocol.RequestBlocks) -> Message | None:
-        # note that we treat the request range as *inclusive*, but we check the
-        # size before we bump end_height. So MAX_BLOCK_COUNT_PER_REQUESTS is off
-        # by one
+        # The range is treated as inclusive: blocks from start_height to end_height.
+        # The number of blocks in the range is end_height - start_height + 1, so we
+        # reject when the difference is >= MAX_BLOCK_COUNT_PER_REQUESTS to enforce
+        # at most MAX_BLOCK_COUNT_PER_REQUESTS blocks per request.
         if (
             request.end_height < request.start_height
-            or request.end_height - request.start_height > self.full_node.constants.MAX_BLOCK_COUNT_PER_REQUESTS
+            or request.end_height - request.start_height >= self.full_node.constants.MAX_BLOCK_COUNT_PER_REQUESTS
         ):
             reject = RejectBlocks(request.start_height, request.end_height)
             msg: Message = make_msg(ProtocolMessageTypes.reject_blocks, reject)
@@ -1534,7 +1535,7 @@ class FullNodeAPI:
         """
         reject = RejectBlockHeaders(request.start_height, request.end_height)
 
-        if request.end_height < request.start_height or request.end_height - request.start_height > 128:
+        if request.end_height < request.start_height or request.end_height - request.start_height >= 128:
             return make_msg(ProtocolMessageTypes.reject_block_headers, reject)
         try:
             blocks_bytes = await self.full_node.block_store.get_block_bytes_in_range(
@@ -1584,7 +1585,7 @@ class FullNodeAPI:
         """DEPRECATED: please use RequestBlockHeaders"""
         if (
             request.end_height < request.start_height
-            or request.end_height - request.start_height > self.full_node.constants.MAX_BLOCK_COUNT_PER_REQUESTS
+            or request.end_height - request.start_height >= self.full_node.constants.MAX_BLOCK_COUNT_PER_REQUESTS
         ):
             return None
         height_to_hash = self.full_node.blockchain.height_to_hash

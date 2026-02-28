@@ -1326,6 +1326,10 @@ async def test_request_blocks(
     assert res.type == ProtocolMessageTypes.reject_blocks.value
 
     # Try fetching more blocks than constants.MAX_BLOCK_COUNT_PER_REQUESTS
+    # Diff == MAX_BLOCK_COUNT_PER_REQUESTS means MAX_BLOCK_COUNT_PER_REQUESTS + 1 blocks (inclusive range)
+    res = await full_node_1.request_blocks(fnp.RequestBlocks(uint32(0), uint32(32), False))
+    assert res is not None
+    assert res.type == ProtocolMessageTypes.reject_blocks.value
     res = await full_node_1.request_blocks(fnp.RequestBlocks(uint32(0), uint32(33), False))
     assert res is not None
     assert res.type == ProtocolMessageTypes.reject_blocks.value
