@@ -421,10 +421,6 @@ class WSChiaConnection:
                 self.log.error(f"Non existing function: {message_type}")
                 raise ProtocolError(Err.INVALID_PROTOCOL_MESSAGE, [message_type])
 
-            if metadata is None:
-                self.log.error(f"Peer trying to call non api function {message_type}")
-                raise ProtocolError(Err.INVALID_PROTOCOL_MESSAGE, [message_type])
-
             assert self.connection_type is not None
             allowed_senders = ProtocolMessageTypeToNodeType.get(bare_message_type)
             if allowed_senders is None or self.connection_type not in allowed_senders:

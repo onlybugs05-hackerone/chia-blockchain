@@ -241,6 +241,10 @@ async def test_request_block_headers_rejected(
     assert msg.type == ProtocolMessageTypes.reject_block_headers.value
 
     # test for 128 blocks to fetch at once limit
+    # Diff == 128 means 129 blocks (inclusive range), which exceeds the limit
+    msg = await full_node_api.request_block_headers(wallet_protocol.RequestBlockHeaders(uint32(10), uint32(138), True))
+    assert msg is not None
+    assert msg.type == ProtocolMessageTypes.reject_block_headers.value
     msg = await full_node_api.request_block_headers(wallet_protocol.RequestBlockHeaders(uint32(10), uint32(140), True))
     assert msg is not None
     assert msg.type == ProtocolMessageTypes.reject_block_headers.value

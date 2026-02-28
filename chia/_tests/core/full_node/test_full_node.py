@@ -1326,6 +1326,10 @@ async def test_request_blocks(
     assert res.type == ProtocolMessageTypes.reject_blocks.value
 
     # Try fetching more blocks than constants.MAX_BLOCK_COUNT_PER_REQUESTS
+    # Diff == MAX_BLOCK_COUNT_PER_REQUESTS means MAX_BLOCK_COUNT_PER_REQUESTS + 1 blocks (inclusive range)
+    res = await full_node_1.request_blocks(fnp.RequestBlocks(uint32(0), uint32(32), False))
+    assert res is not None
+    assert res.type == ProtocolMessageTypes.reject_blocks.value
     res = await full_node_1.request_blocks(fnp.RequestBlocks(uint32(0), uint32(33), False))
     assert res is not None
     assert res.type == ProtocolMessageTypes.reject_blocks.value
@@ -3707,3 +3711,25 @@ async def test_node_types_inbound_connections_limit(
     await time_out_assert(5, lambda: peer_id in server.all_connections)
     # New inbound connections should be refused
     assert server.accept_inbound_connections(node_type) is False
+
+
+@pytest.mark.anyio
+@pytest.mark.limit_consensus_modes(allowed=[ConsensusMode.HARD_FORK_2_0], reason="irrelevant")
+async def test_full_node_inbound_connections_limit(
+    one_node_one_block: tuple[FullNodeSimulator, ChiaServer, BlockTools],
+    self_hostname: str,
+) -> None:
+    _, server, _ = one_node_one_block
+    # Establish a reference base: by default, a full node accepts inbound FULL_NODE connections
+    assert server.accept_inbound_connections(NodeType.FULL_NODE) is True
+    # Set target_peer_count=1 and target_outbound_peer_count=0 so max_inbound=1
+    server.config["target_peer_count"] = 1
+    server.config["target_outbound_peer_count"] = 0
+    _, peer_id = await add_dummy_connection(server, self_hostname, 1337, NodeType.FULL_NODE)
+    await time_out_assert(5, lambda: peer_id in server.all_connections)
+    # New inbound FULL_NODE connections should be refused
+    assert server.accept_inbound_connections(NodeType.FULL_NODE) is False
+    # When target_outbound_peer_count >= target_peer_count, max_inbound is clamped to 0
+    server.config["target_peer_count"] = 0
+    server.config["target_outbound_peer_count"] = 8
+    assert server.accept_inbound_connections(NodeType.FULL_NODE) is False
