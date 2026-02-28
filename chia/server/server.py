@@ -713,13 +713,16 @@ class ChiaServer:
         return uint16(self._port)
 
     def accept_inbound_connections(self, node_type: NodeType) -> bool:
-        if not self._local_type == NodeType.FULL_NODE:
+        if self._local_type != NodeType.FULL_NODE:
             return True
         inbound_count = len(self.get_connections(node_type, outbound=False))
         if node_type == NodeType.FULL_NODE:
-            return inbound_count < cast(int, self.config.get("target_peer_count", 40)) - cast(
-                int, self.config.get("target_outbound_peer_count", 8)
+            max_inbound = max(
+                0,
+                cast(int, self.config.get("target_peer_count", 40))
+                - cast(int, self.config.get("target_outbound_peer_count", 8)),
             )
+            return inbound_count < max_inbound
         if node_type == NodeType.WALLET:
             return inbound_count < cast(int, self.config.get("max_inbound_wallet", 20))
         if node_type == NodeType.FARMER:
